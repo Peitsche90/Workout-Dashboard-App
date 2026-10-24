@@ -1,0 +1,1724 @@
+<!DOCTYPE html>
+<html lang="de" class="h-full bg-neutral-950 text-neutral-100">
+<head>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0d1117">
+
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Studio Workout Dashboard</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace']
+          },
+          colors: {
+            studio: {
+              bg: '#0a0d12',
+              card: '#121721',
+              cardBorder: '#1e2638',
+              surface: '#171f2e',
+              surfaceHover: '#1f2a3f',
+              muted: '#717f96',
+              work: '#10b981',      // Emerald Green
+              rest: '#f59e0b',      // Amber / Orange
+              prepare: '#3b82f6',   // Vibrant Blue
+              setrest: '#8b5cf6'    // Violet for Set Rest
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    /* Custom subtle scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.4);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.25);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.45);
+    }
+    .no-select {
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    /* Hide number input spinners for clean touch controls */
+    input[type=number]::-webkit-inner-spin-button, 
+    input[type=number]::-webkit-outer-spin-button { 
+      -webkit-appearance: none; 
+      margin: 0; 
+    }
+    input[type=number] {
+      -moz-appearance: textfield;
+      appearance: textfield;
+    }
+    /* Range slider styling */
+    input[type=range] {
+      accent-color: #10b981;
+    }
+  </style>
+</head>
+<body class="h-full w-full overflow-hidden flex flex-col font-sans select-none antialiased bg-studio-bg text-neutral-100">
+
+  <!-- TOP STUDIO STATUS BAR -->
+  <header class="h-11 border-b border-studio-cardBorder bg-studio-card/90 backdrop-blur px-4 flex items-center justify-between flex-shrink-0 z-20">
+    <div class="flex items-center space-x-3">
+      <div class="w-2.5 h-2.5 rounded-full bg-studio-work shadow-[0_0_10px_rgba(16,185,129,0.7)] animate-pulse"></div>
+      <h1 class="text-xs sm:text-sm font-semibold tracking-wide uppercase text-neutral-200">
+        Studio <span class="text-studio-work">Dashboard</span>
+      </h1>
+      <span class="text-[10px] px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-400 font-mono hidden sm:inline-block">Landscape Mode</span>
+
+      <!-- Screen Wake Lock Status Badge -->
+      <div id="wakeLockBadge" class="hidden items-center space-x-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[10px] font-mono" title="Display bleibt während des Workouts aktiv">
+        <svg class="w-3 h-3 text-amber-400 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+        </svg>
+        <span class="font-semibold">Display Wach</span>
+      </div>
+    </div>
+
+    <!-- Live Clock & Fullscreen Toggle -->
+    <div class="flex items-center space-x-3">
+      <div class="text-right">
+        <span id="studioClock" class="font-mono text-xs sm:text-sm tracking-wider text-neutral-300 font-medium">00:00:00</span>
+      </div>
+      <button id="fullscreenBtn" title="Vollbild umschalten" class="p-1.5 rounded-lg bg-studio-surface hover:bg-studio-surfaceHover border border-studio-cardBorder text-neutral-300 transition-colors flex items-center space-x-1.5 text-xs">
+        <svg id="fullscreenIconEnter" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+        </svg>
+        <svg id="fullscreenIconExit" class="w-3.5 h-3.5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4l5 5m0 0H4m5 0V4m11 0l-5 5m0 0h5m-5 0V4M4 20l5-5m0 0H4m5 0v5m11 0l-5-5m0 0h5m-5 0v5"/>
+        </svg>
+        <span class="hidden sm:inline font-medium">Vollbild</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- 50/50 SPLIT CONTAINER (Landscape Tablet Optimized) -->
+  <main class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2 p-2 overflow-hidden bg-studio-bg min-h-0">
+
+    <!-- LEFT HALF: WORKOUT PLAN & NOTES -->
+    <section class="flex flex-col h-full bg-studio-card border border-studio-cardBorder rounded-2xl p-3 overflow-hidden shadow-xl min-h-0">
+      <!-- Notes Header -->
+      <div class="flex items-center justify-between pb-2 border-b border-studio-cardBorder/70 flex-shrink-0">
+        <div class="flex items-center space-x-2">
+          <svg class="w-4 h-4 text-studio-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          <h2 class="text-xs sm:text-sm font-semibold tracking-wider uppercase text-neutral-300">Workout-Plan & Notizen</h2>
+        </div>
+
+        <div class="flex items-center space-x-2">
+          <!-- 3-Way Font Size Selector: S (16px), M (22px), L (32px) -->
+          <div class="flex items-center bg-studio-bg border border-studio-cardBorder rounded-lg p-0.5" id="fontSizeGroup" title="Schriftgröße anpassen">
+            <button type="button" data-size="sm" class="font-size-btn px-2.5 py-0.5 text-xs font-semibold rounded text-neutral-400 hover:text-neutral-100 transition-colors" title="Klein (16px)">S</button>
+            <button type="button" data-size="md" class="font-size-btn px-2.5 py-0.5 text-xs font-semibold rounded bg-studio-surface text-studio-work shadow-sm transition-colors" title="Mittel (22px)">M</button>
+            <button type="button" data-size="lg" class="font-size-btn px-2.5 py-0.5 text-xs font-semibold rounded text-neutral-400 hover:text-neutral-100 transition-colors" title="Groß (32px - Teleprompter)">L</button>
+          </div>
+
+          <!-- Template selector -->
+          <button id="loadTemplateBtn" class="text-xs px-2.5 py-1 rounded-lg bg-studio-surface hover:bg-studio-surfaceHover text-neutral-300 border border-studio-cardBorder transition-colors flex items-center space-x-1" title="Trainingsplan-Vorlagen">
+            <span>Vorlagen</span>
+          </button>
+          <!-- Clear Notes Button -->
+          <button id="clearNotesBtn" class="text-xs px-2.5 py-1 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-red-300 border border-red-900/50 transition-colors flex items-center space-x-1" title="Notizen leeren">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+            <span>Leeren</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Notes Textarea Area -->
+      <div class="flex-1 mt-2 flex flex-col relative min-h-0">
+        <textarea
+          id="workoutNotes"
+          class="w-full h-full p-3.5 bg-studio-surface/50 border border-studio-cardBorder/60 rounded-xl text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-studio-work/60 focus:ring-1 focus:ring-studio-work/40 resize-none font-sans text-[22px] leading-relaxed transition-all selection:bg-studio-work/30 overflow-y-auto"
+          placeholder="Hier Trainingsplan, Übungen oder Notizen eintragen...&#10;&#10;Beispiel:&#10;1. Kettlebell Swings (24 kg)&#10;2. Hand-Release Push-ups&#10;3. Goblet Squats&#10;4. Hollow Body Hold"
+          spellcheck="false"
+        ></textarea>
+        <div id="saveStatus" class="absolute bottom-2.5 right-3 text-[11px] font-mono text-neutral-500 pointer-events-none transition-opacity duration-300 opacity-75">
+          Gespeichert
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT HALF: TABATA TIMER & AUDIO DECK -->
+    <section class="flex flex-col h-full bg-studio-card border border-studio-cardBorder rounded-2xl p-2.5 overflow-hidden shadow-xl gap-2 min-h-0">
+
+      <!-- TOP SECTION: TIMER PARAMETERS -->
+      <div class="bg-studio-surface/60 border border-studio-cardBorder/70 rounded-xl p-2 flex-shrink-0">
+        <div class="flex items-center justify-between mb-1.5">
+          <div class="text-[10px] font-bold uppercase tracking-wider text-neutral-400 flex items-center space-x-1.5">
+            <svg class="w-3.5 h-3.5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
+            </svg>
+            <span>Intervall-Parameter</span>
+          </div>
+
+          <!-- Total Duration & Sound Mute Toggle -->
+          <div class="flex items-center space-x-3">
+            <button id="soundToggleBtn" class="flex items-center space-x-1 px-2 py-0.5 rounded-lg bg-studio-bg border border-studio-cardBorder hover:bg-neutral-800 text-neutral-200 transition-colors" title="Signal-Töne ein-/ausschalten">
+              <svg id="soundIconOn" class="w-3 h-3 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+              </svg>
+              <svg id="soundIconOff" class="w-3 h-3 text-neutral-500 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/>
+              </svg>
+              <span id="soundStatusText" class="text-[11px] font-medium font-sans">Ton: AN</span>
+            </button>
+
+            <div class="text-[11px] font-mono text-neutral-300">
+              Gesamt: <span id="totalWorkoutTimeBadge" class="text-studio-work font-semibold">--:--</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6 Direct Input Controls with +/- Buttons -->
+        <div class="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+          <!-- Prepare -->
+          <div class="flex flex-col items-center bg-studio-bg/80 border border-studio-cardBorder rounded-lg p-1">
+            <label for="input_prepareTime" class="text-[9px] text-blue-400 uppercase font-semibold">Prepare</label>
+            <div class="flex items-center justify-between w-full mt-0.5 px-0.5">
+              <button type="button" class="adjust-btn w-5 h-5 rounded bg-studio-surface hover:bg-neutral-700 active:scale-95 flex items-center justify-center text-xs font-bold text-neutral-200" data-target="prepareTime" data-step="-5">-</button>
+              <div class="flex items-center justify-center">
+                <input type="number" id="input_prepareTime" min="0" max="300" step="1" class="timer-config-input w-7 sm:w-8 bg-transparent text-center font-mono text-xs font-semibold text-neutral-100 focus:outline-none focus:bg-neutral-800 rounded p-0">
+                <span class="text-[10px] text-neutral-400 font-mono -ml-0.5">s</span>
+              </div>
+              <button type="button" class="adjust-btn w-5 h-5 rounded bg-studio-surface hover:bg-neutral-700 active:scale-95 flex items-center justify-center text-xs font-bold text-neutral-200" data-target="prepareTime" data-step="5">+</button>
+            </div>
+          </div>
+
+          <!-- Work -->
+          <div class="flex flex-col items-center bg-studio-bg/80 border border-studio-cardBorder rounded-lg p-1">
+            <label for="input_workTime" class="text-[9px] text-emerald-400 uppercase font-semibold">Work</label>
+            <div class="flex items-center justify-between w-full mt-0.5 px-0.5">
+              <button type="button" class="adjust-btn w-5 h-5 rounded bg-studio-surface hover:bg-neutral-700 active:scale-95 flex items-center justify-center text-xs font-bold text-neutral-200" data-target="workTime" data-step="-5">-</button>
+              <div class="flex items-center justify-center">
+                <input type="number" id="input_workTime" min="5" max="600" step="1" class="timer-config-input w-7 sm:w-8 bg-transparent text-center font-mono text-xs font-semibold text-neutral-100 focus:outline-none focus:bg-neutral-800 rounded p-0">
+                <span class="text-[10px] text-neutral-400 font-mono -ml-0.5">s</span>
+              </div>
+              <button type="button" class="adjust-btn w-5 h-5 rounded bg-studio-surface hover:bg-neutral-700 active:scale-95 flex items-center justify-center text-xs font-bold text-neutral-200" data-target="workTime" data-step="5">+</button>
+            </div>
+          </div>
+
+          <!-- Rest -->
+          <div class="flex flex-col items-center bg-studio-bg/80 border border-studio-cardBorder rounded-lg p-1">
+            <label for="input_restTime" class="text-[9px] text-amber-400 uppercase font-semibold">Rest</label>
+            <div class="flex items-center justify-between w-full mt-0.5 px-0.5">
+              <button type="button" class="adjust-btn w-5 h-5 rounded bg-studio-surface hover:bg-neutral-700 active:scale-95 flex items-center justify-center text-xs font-bold text-neutral-200" data-target="restTime" data-step="-5">-</button>
+              <div class="flex items-center justify-center">
+                <input type="number" id="input_restTime" min="0" max="600" step="1" class="timer-config-input w-7 sm:w-8 bg-transparent text-center font-mono text-xs font-semibold text-neutral-100 focus:outline-none focus:bg-neutral-800 rounded p-0">
+                <span class="text-[10px] text-neutral-400 font-mono -ml-0.5">s</span>
+              </div>
+              <button type="button" class="adjust-btn w-5 h-5 rounded bg-studio-surface hover:bg-neutral-700 active:scale-95 flex items-center justify-center text-xs font-bold text-neutral-200" data-target="restTime" data-step="5">+</button>
+            </div>
+          </div>
+
+          <!-- Cycles -->
+          <div class="flex flex-col items-center bg-studio-bg/80 border border-studio-cardBorder rounded-lg p-1">
+            <label for="input_cycles" class="text-[9px] text-neutral-300 uppercase font-semibold">Cycles</label>
+            <div class="flex items-center justify-between w-full mt-0.5 px-0.5">
+              <button type="button" class="adjust-btn w-5 h-5 rounded bg-studio-surface hover:bg-neutral-700 active:scale-95 flex items-center justify-center text-xs font-bold text-neutral-200" data-target="cycles" data-step="-1">-</button>
+              <div class="flex items-center justify-center">
+                <input type="number" id="input_cycles" min="1" max="99" step="1" class="timer-config-input w-8 bg-transparent text-center font-mono text-xs font-semibold text-neutral-100 focus:outline-none focus:bg-neutral-800 rounded p-0">
+              </div>
+              <button type="button" class="adjust-btn w-5 h-5 rounded bg-studio-surface hover:bg-neutral-700 active:scale-95 flex items-center justify-center text-xs font-bold text-neutral-200" data-target="cycles" data-step="1">+</button>
+            </div>
+          </div>
+
+          <!-- Sets -->
+          <div class="flex flex-col items-center bg-studio-bg/80 border border-studio-cardBorder rounded-lg p-1">
+            <label for="input_sets" class="text-[9px] text-neutral-300 uppercase font-semibold">Sets</label>
+            <div class="flex items-center justify-between w-full mt-0.5 px-0.5">
+              <button type="button" class="adjust-btn w-5 h-5 rounded bg-studio-surface hover:bg-neutral-700 active:scale-95 flex items-center justify-center text-xs font-bold text-neutral-200" data-target="sets" data-step="-1">-</button>
+              <div class="flex items-center justify-center">
+                <input type="number" id="input_sets" min="1" max="50" step="1" class="timer-config-input w-8 bg-transparent text-center font-mono text-xs font-semibold text-neutral-100 focus:outline-none focus:bg-neutral-800 rounded p-0">
+              </div>
+              <button type="button" class="adjust-btn w-5 h-5 rounded bg-studio-surface hover:bg-neutral-700 active:scale-95 flex items-center justify-center text-xs font-bold text-neutral-200" data-target="sets" data-step="1">+</button>
+            </div>
+          </div>
+
+          <!-- Rest between Sets -->
+          <div class="flex flex-col items-center bg-studio-bg/80 border border-studio-cardBorder rounded-lg p-1">
+            <label for="input_setRestTime" class="text-[9px] text-purple-400 uppercase font-semibold">Set Rest</label>
+            <div class="flex items-center justify-between w-full mt-0.5 px-0.5">
+              <button type="button" class="adjust-btn w-5 h-5 rounded bg-studio-surface hover:bg-neutral-700 active:scale-95 flex items-center justify-center text-xs font-bold text-neutral-200" data-target="setRestTime" data-step="-15">-</button>
+              <div class="flex items-center justify-center">
+                <input type="number" id="input_setRestTime" min="0" max="1200" step="5" class="timer-config-input w-8 sm:w-9 bg-transparent text-center font-mono text-xs font-semibold text-neutral-100 focus:outline-none focus:bg-neutral-800 rounded p-0">
+                <span class="text-[10px] text-neutral-400 font-mono -ml-0.5">s</span>
+              </div>
+              <button type="button" class="adjust-btn w-5 h-5 rounded bg-studio-surface hover:bg-neutral-700 active:scale-95 flex items-center justify-center text-xs font-bold text-neutral-200" data-target="setRestTime" data-step="15">+</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MIDDLE SECTION: ACTIVE TIMER DISPLAY SCREEN -->
+      <div id="timerCard" class="flex-1 bg-studio-surface/40 border-2 border-neutral-800 rounded-xl p-2.5 flex flex-col justify-between relative overflow-hidden transition-all duration-500 shadow-inner min-h-0">
+        <!-- Ambient Glow -->
+        <div id="phaseGlow" class="absolute -inset-10 opacity-20 pointer-events-none transition-all duration-700 blur-3xl bg-blue-500"></div>
+
+        <!-- Top status bar of Timer (Phase Name & Cycle/Set Counter) -->
+        <div class="flex items-center justify-between z-10 flex-shrink-0">
+          <div class="flex items-center space-x-2">
+            <span id="phaseBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-widest uppercase bg-blue-500/20 text-blue-400 border border-blue-500/40 shadow-sm transition-colors duration-300">
+              READY
+            </span>
+            <span id="nextPhaseHint" class="text-xs font-medium text-neutral-400">
+              Nächste: <span id="nextPhaseName" class="text-neutral-200">Prepare</span>
+            </span>
+          </div>
+
+          <!-- Set and Cycle counters -->
+          <div class="flex items-center space-x-1.5 text-xs font-mono">
+            <div class="px-2 py-0.5 bg-studio-bg/90 border border-studio-cardBorder rounded-lg">
+              <span class="text-neutral-400 text-[10px] mr-1">CYCLE</span>
+              <span id="cycleDisplay" class="font-bold text-neutral-100">1 / 8</span>
+            </div>
+            <div class="px-2 py-0.5 bg-studio-bg/90 border border-studio-cardBorder rounded-lg">
+              <span class="text-neutral-400 text-[10px] mr-1">SET</span>
+              <span id="setDisplay" class="font-bold text-neutral-100">1 / 1</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- GIANT COUNTDOWN DIGITS -->
+        <div class="flex flex-col items-center justify-center py-0.5 z-10 flex-1 my-auto">
+          <div id="timerDigits" class="font-mono font-black text-6xl sm:text-7xl md:text-8xl lg:text-9xl tracking-tighter tabular-nums text-neutral-100 drop-shadow-md select-none leading-none">
+            00:00
+          </div>
+          <!-- Interval progress bar line -->
+          <div class="w-full max-w-sm h-1.5 bg-neutral-800/80 rounded-full mt-1.5 overflow-hidden border border-neutral-700/40">
+            <div id="intervalProgressBar" class="h-full bg-blue-500 w-full transition-all duration-200 rounded-full"></div>
+          </div>
+        </div>
+
+        <!-- CONTROLS: Reset, Start/Pause, Weiter -->
+        <div class="grid grid-cols-4 gap-2 z-10 pt-1 flex-shrink-0">
+          <button id="resetTimerBtn" class="col-span-1 py-2.5 px-2 rounded-xl bg-studio-surface hover:bg-neutral-700/80 active:scale-[0.98] border border-studio-cardBorder text-neutral-300 font-semibold text-xs transition-all flex flex-col items-center justify-center space-y-0.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            <span>Reset</span>
+          </button>
+
+          <button id="mainToggleBtn" class="col-span-2 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-bold text-base md:text-lg tracking-wider shadow-lg shadow-emerald-950/50 transition-all flex items-center justify-center space-x-2">
+            <svg id="toggleIconPlay" class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+            <svg id="toggleIconPause" class="w-5 h-5 fill-current hidden" viewBox="0 0 24 24">
+              <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+            </svg>
+            <span id="toggleText">START</span>
+          </button>
+
+          <button id="skipPhaseBtn" class="col-span-1 py-2.5 px-2 rounded-xl bg-studio-surface hover:bg-neutral-700/80 active:scale-[0.98] border border-studio-cardBorder text-neutral-300 font-semibold text-xs transition-all flex flex-col items-center justify-center space-y-0.5" title="Phase überspringen">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
+            </svg>
+            <span>Weiter</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- BOTTOM SECTION: PERSISTENT WORKOUT MUSIC DECK (IndexedDB Storage) -->
+      <div class="bg-studio-surface/60 border border-studio-cardBorder/80 rounded-xl p-2.5 flex flex-col gap-2 flex-shrink-0">
+
+        <!-- DECK HEADER: TITLE, DUCKING BADGE & AUTO-SYNC TOGGLE -->
+        <div class="flex items-center justify-between gap-2 border-b border-studio-cardBorder/70 pb-1.5">
+          <div class="flex items-center space-x-2">
+            <div class="flex items-center space-x-1.5 text-xs font-semibold text-neutral-200">
+              <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/>
+              </svg>
+              <span>Workout Playlist</span>
+            </div>
+            <span id="playlistCountBadge" class="hidden text-[10px] px-1.5 py-0.5 rounded bg-neutral-800 text-emerald-300 font-mono border border-emerald-900/50">0 Tracks</span>
+          </div>
+
+          <!-- Status Indicators & Auto-Sync Toggle -->
+          <div class="flex items-center space-x-2">
+            <span id="duckingBadge" class="hidden text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse font-mono font-bold">Ducking -85%</span>
+
+            <label class="flex items-center space-x-1.5 cursor-pointer text-[11px] text-neutral-300 bg-studio-bg/90 border border-studio-cardBorder px-2 py-0.5 rounded-lg hover:border-neutral-600 transition" title="Musik automatisch mit dem Timer starten/pausieren">
+              <input type="checkbox" id="syncAudioToggle" checked class="w-3.5 h-3.5 accent-emerald-500 rounded cursor-pointer">
+              <span class="font-medium hidden sm:inline">Auto-Sync</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- TRACK INFO & FILE UPLOADER -->
+        <div class="flex items-center justify-between gap-2">
+          <div class="min-w-0 flex items-center space-x-2">
+            <div id="playingDisc" class="w-5 h-5 rounded-full border border-neutral-700 bg-neutral-900 flex items-center justify-center flex-shrink-0 transition-transform duration-1000">
+              <div class="w-2 h-2 rounded-full bg-emerald-500/40"></div>
+            </div>
+            <div id="audioTrackTitle" class="text-xs text-neutral-200 font-medium truncate max-w-[200px] sm:max-w-xs" title="Keine Musik geladen">
+              Keine Musik geladen (MP3 / WAV)
+            </div>
+          </div>
+
+          <div class="flex items-center space-x-1.5 flex-shrink-0">
+            <input type="file" id="audioFileInput" accept="audio/*" multiple class="hidden">
+            <button id="selectAudioFileBtn" type="button" class="text-xs px-2.5 py-1 rounded-lg bg-studio-surface hover:bg-neutral-700 text-neutral-200 border border-studio-cardBorder transition flex items-center space-x-1 shadow-sm" title="Eigene Audio-Dateien dauerhaft hinzufügen">
+              <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+              </svg>
+              <span id="selectAudioFileBtnText">Dateien hinzufügen</span>
+            </button>
+            <button id="clearPlaylistBtn" type="button" class="hidden text-xs p-1 rounded-lg bg-neutral-800 hover:bg-red-950/60 text-neutral-400 hover:text-red-300 border border-studio-cardBorder transition" title="Gesamte Playlist leeren">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Persistent Playlist Queue Display -->
+        <div id="playlistWrapper" class="hidden max-h-24 overflow-y-auto pr-1 flex flex-col gap-1 border border-studio-cardBorder/70 rounded-lg p-1.5 bg-studio-bg/60">
+          <div id="playlistItems" class="flex flex-col gap-1"></div>
+        </div>
+
+        <!-- UNIFIED PLAYBACK CONTROLS -->
+        <div class="flex items-center space-x-2 bg-studio-bg/70 border border-studio-cardBorder/60 rounded-lg px-2 py-1.5 mt-0.5">
+          <!-- Prev Track Button -->
+          <button id="audioPrevBtn" disabled class="w-7 h-7 rounded-lg bg-studio-surface hover:bg-neutral-700 disabled:opacity-30 disabled:hover:bg-studio-surface flex items-center justify-center text-neutral-200 active:scale-95 transition-all flex-shrink-0" title="Vorheriger Track">
+            <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+              <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
+            </svg>
+          </button>
+
+          <!-- Master Play / Pause Button -->
+          <button id="masterPlayPauseBtn" disabled class="w-8 h-8 rounded-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:hover:bg-emerald-600 flex items-center justify-center text-white active:scale-95 transition-all flex-shrink-0 shadow-md" title="Play / Pause">
+            <svg id="musicPlayIcon" class="w-4 h-4 fill-current ml-0.5" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+            <svg id="musicPauseIcon" class="w-4 h-4 fill-current hidden" viewBox="0 0 24 24">
+              <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+            </svg>
+          </button>
+
+          <!-- Next Track Button -->
+          <button id="audioNextBtn" disabled class="w-7 h-7 rounded-lg bg-studio-surface hover:bg-neutral-700 disabled:opacity-30 disabled:hover:bg-studio-surface flex items-center justify-center text-neutral-200 active:scale-95 transition-all flex-shrink-0" title="Nächster Track">
+            <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+              <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
+            </svg>
+          </button>
+
+          <!-- Progress / Timeline Slider -->
+          <span id="audioCurrentTime" class="font-mono text-[10px] text-neutral-400 w-8 text-right tabular-nums flex-shrink-0">00:00</span>
+          <div class="flex-1 flex items-center">
+            <input id="audioProgressBar" type="range" min="0" max="100" value="0" step="0.1" disabled class="w-full h-1.5 bg-neutral-700 rounded-lg cursor-pointer disabled:cursor-not-allowed">
+          </div>
+          <span id="audioDuration" class="font-mono text-[10px] text-neutral-400 w-8 tabular-nums flex-shrink-0">00:00</span>
+
+          <!-- Volume Slider -->
+          <div class="flex items-center space-x-1 pl-1.5 border-l border-studio-cardBorder/80 flex-shrink-0">
+            <svg class="w-3.5 h-3.5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+            </svg>
+            <input id="audioVolumeSlider" type="range" min="0" max="1" step="0.05" value="0.8" class="w-14 sm:w-16 h-1.5 bg-neutral-700 rounded-lg cursor-pointer" title="Lautstärke Musik">
+          </div>
+        </div>
+
+        <!-- Native Audio Element -->
+        <audio id="workoutAudioElement" preload="metadata"></audio>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- MODALS / DIALOGS -->
+  <!-- Clear Notes Confirmation Modal -->
+  <div id="clearNotesModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-studio-card border border-studio-cardBorder rounded-2xl max-w-sm w-full p-5 shadow-2xl text-center space-y-3">
+      <div class="w-11 h-11 rounded-full bg-red-950/60 border border-red-900/60 text-red-400 mx-auto flex items-center justify-center">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+        </svg>
+      </div>
+      <div>
+        <h3 class="text-base font-bold text-neutral-100">Notizen leeren?</h3>
+        <p class="text-xs text-neutral-400 mt-1">Möchtest du den gesamten Inhalt deines Workout-Plans wirklich löschen?</p>
+      </div>
+      <div class="flex space-x-2 pt-2">
+        <button id="cancelClearBtn" class="flex-1 py-2.5 px-3 rounded-xl bg-studio-surface hover:bg-studio-surfaceHover border border-studio-cardBorder text-neutral-300 font-semibold text-xs transition">Abbrechen</button>
+        <button id="confirmClearBtn" class="flex-1 py-2.5 px-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-semibold text-xs shadow-lg shadow-red-950/50 transition">Ja, leeren</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Clear Playlist Confirmation Modal -->
+  <div id="clearPlaylistModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-studio-card border border-studio-cardBorder rounded-2xl max-w-sm w-full p-5 shadow-2xl text-center space-y-3">
+      <div class="w-11 h-11 rounded-full bg-red-950/60 border border-red-900/60 text-red-400 mx-auto flex items-center justify-center">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+        </svg>
+      </div>
+      <div>
+        <h3 class="text-base font-bold text-neutral-100">Playlist leeren?</h3>
+        <p class="text-xs text-neutral-400 mt-1">Möchtest du alle gespeicherten Tracks aus dem Speicher entfernen?</p>
+      </div>
+      <div class="flex space-x-2 pt-2">
+        <button id="cancelClearPlaylistBtn" class="flex-1 py-2.5 px-3 rounded-xl bg-studio-surface hover:bg-studio-surfaceHover border border-studio-cardBorder text-neutral-300 font-semibold text-xs transition">Abbrechen</button>
+        <button id="confirmClearPlaylistBtn" class="flex-1 py-2.5 px-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-semibold text-xs shadow-lg shadow-red-950/50 transition">Ja, entfernen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Templates Selection Modal -->
+  <div id="templatesModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-studio-card border border-studio-cardBorder rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-3">
+      <div class="flex justify-between items-center border-b border-studio-cardBorder pb-2">
+        <h3 class="text-sm font-bold uppercase tracking-wider text-neutral-200">Trainingsplan-Vorlagen</h3>
+        <button id="closeTemplatesBtn" class="text-neutral-400 hover:text-neutral-100 p-1">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="space-y-2">
+        <button class="template-choice-btn w-full text-left p-3 rounded-xl bg-studio-surface hover:bg-studio-surfaceHover border border-studio-cardBorder transition" data-type="tabata_classic">
+          <div class="font-semibold text-emerald-400 text-xs">Klassisches Tabata (Full Body)</div>
+          <div class="text-[11px] text-neutral-400 mt-0.5">Burpees, Squat Jumps, Mountain Climbers, Push-ups</div>
+        </button>
+        <button class="template-choice-btn w-full text-left p-3 rounded-xl bg-studio-surface hover:bg-studio-surfaceHover border border-studio-cardBorder transition" data-type="hiit_kettlebell">
+          <div class="font-semibold text-amber-400 text-xs">Kettlebell & Core Flow</div>
+          <div class="text-[11px] text-neutral-400 mt-0.5">Swings, Clean & Press, Goblet Squat, Russian Twists</div>
+        </button>
+        <button class="template-choice-btn w-full text-left p-3 rounded-xl bg-studio-surface hover:bg-studio-surfaceHover border border-studio-cardBorder transition" data-type="boxing_intervals">
+          <div class="font-semibold text-blue-400 text-xs">Boxing & Agility Drills</div>
+          <div class="text-[11px] text-neutral-400 mt-0.5">Shadow Boxing, Footwork Ladder, High Knees, Plank Hold</div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Persistent Storage Keys (Version 4 with complete State-Retention)
+    const CONFIG_STORAGE_KEY = 'studio_workout_config_v4';
+    const TIMER_STATE_KEY = 'studio_workout_timer_state_v4';
+    const NOTES_STORAGE_KEY = 'studio_workout_notes_v4';
+    const FONT_STORAGE_KEY = 'studio_workout_font_size_v4';
+    const SOUND_STORAGE_KEY = 'studio_workout_sound_enabled_v4';
+    const SYNC_STORAGE_KEY = 'studio_workout_autosync_v4';
+
+    const defaultConfigs = {
+      prepareTime: 10,
+      workTime: 20,
+      restTime: 10,
+      cycles: 8,
+      sets: 1,
+      setRestTime: 60
+    };
+
+    let config = { ...defaultConfigs };
+
+    function loadConfigFromStorage() {
+      try {
+        const stored = localStorage.getItem(CONFIG_STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          Object.keys(defaultConfigs).forEach(key => {
+            if (typeof parsed[key] === 'number' && !isNaN(parsed[key])) {
+              config[key] = parsed[key];
+            }
+          });
+        }
+      } catch (e) {
+        console.warn('Could not read config from storage:', e);
+      }
+    }
+
+    function saveConfigToStorage() {
+      try {
+        localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(config));
+      } catch (e) {
+        console.warn('Could not save config to storage:', e);
+      }
+    }
+
+    // Load initial config from localStorage synchronously
+    loadConfigFromStorage();
+
+    // Timer runtime state machine
+    const state = {
+      isRunning: false,
+      currentPhase: 'IDLE',
+      currentCycle: 1,
+      currentSet: 1,
+      timeLeftInPhase: config.prepareTime > 0 ? config.prepareTime : config.workTime,
+      phaseDuration: config.prepareTime > 0 ? config.prepareTime : config.workTime,
+      timerInterval: null
+    };
+
+    function saveTimerRuntimeState() {
+      try {
+        const snapshot = {
+          currentPhase: state.currentPhase,
+          currentCycle: state.currentCycle,
+          currentSet: state.currentSet,
+          timeLeftInPhase: state.timeLeftInPhase,
+          phaseDuration: state.phaseDuration,
+          isRunning: false // Always pause when restoring from fresh load
+        };
+        localStorage.setItem(TIMER_STATE_KEY, JSON.stringify(snapshot));
+      } catch (e) {}
+    }
+
+    function loadTimerRuntimeState() {
+      try {
+        const raw = localStorage.getItem(TIMER_STATE_KEY);
+        if (!raw) return null;
+        return JSON.parse(raw);
+      } catch (e) {
+        return null;
+      }
+    }
+
+    // Screen Wake Lock API Controller to keep display awake during workout
+    let wakeLock = null;
+    const wakeLockBadge = document.getElementById('wakeLockBadge');
+
+    async function requestWakeLock() {
+      if ('wakeLock' in navigator) {
+        try {
+          if (!wakeLock) {
+            wakeLock = await navigator.wakeLock.request('screen');
+            if (wakeLockBadge) {
+              wakeLockBadge.classList.remove('hidden');
+              wakeLockBadge.classList.add('flex');
+            }
+            wakeLock.addEventListener('release', () => {
+              wakeLock = null;
+              if (wakeLockBadge) {
+                wakeLockBadge.classList.add('hidden');
+                wakeLockBadge.classList.remove('flex');
+              }
+            });
+          }
+        } catch (err) {
+          console.debug('Wake lock request denied or not supported:', err);
+        }
+      }
+    }
+
+    async function releaseWakeLock() {
+      if (wakeLock) {
+        try {
+          await wakeLock.release();
+        } catch (err) {}
+        wakeLock = null;
+      }
+      if (wakeLockBadge) {
+        wakeLockBadge.classList.add('hidden');
+        wakeLockBadge.classList.remove('flex');
+      }
+    }
+
+    document.addEventListener('visibilitychange', async () => {
+      if (document.visibilityState === 'visible' && state.isRunning) {
+        await requestWakeLock();
+      }
+    });
+
+    // Web Audio API Synthesizer & Gym Buzzer
+    let audioCtx = null;
+    let soundEnabled = true;
+
+    function getAudioContext() {
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+          audioCtx = new AudioContextClass();
+        }
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    // Audio Ducking Controller for Local Music
+    const workoutAudio = document.getElementById('workoutAudioElement');
+    const duckingBadge = document.getElementById('duckingBadge');
+    let baseVolume = 0.8;
+    let duckingTimeout = null;
+    let duckingRestoreInterval = null;
+
+    function applyCurrentVolume(vol) {
+      if (workoutAudio) {
+        workoutAudio.volume = Math.max(0, Math.min(1, vol));
+      }
+    }
+
+    // Radical Audio Ducking (-85% volume drop during buzzer)
+    function triggerAudioDucking(durationMs = 1300, duckFactor = 0.15) {
+      clearTimeout(duckingTimeout);
+      clearInterval(duckingRestoreInterval);
+
+      const duckedVolume = Math.max(0.02, baseVolume * duckFactor);
+      applyCurrentVolume(duckedVolume);
+      if (duckingBadge) duckingBadge.classList.remove('hidden');
+
+      duckingTimeout = setTimeout(() => {
+        let currentVol = duckedVolume;
+        duckingRestoreInterval = setInterval(() => {
+          currentVol = Math.min(baseVolume, currentVol + 0.08);
+          applyCurrentVolume(currentVol);
+          if (currentVol >= baseVolume) {
+            applyCurrentVolume(baseVolume);
+            clearInterval(duckingRestoreInterval);
+            if (duckingBadge) duckingBadge.classList.add('hidden');
+          }
+        }, 30);
+      }, durationMs);
+    }
+
+    // Short Countdown Warning Beep (600 Hz, 100 ms) for 3, 2, 1
+    function playCountdownBeep() {
+      if (!soundEnabled) return;
+      const ctx = getAudioContext();
+      if (!ctx) return;
+
+      triggerAudioDucking(250, 0.3);
+
+      try {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const now = ctx.currentTime;
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(600, now);
+
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.4, now + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.11);
+      } catch (err) {
+        console.warn('Countdown audio error:', err);
+      }
+    }
+
+    // Piercing 1000ms (1s) Digital Gym Buzzer on Phase Transitions
+    function playPhaseTransitionGong(targetPhase) {
+      if (!soundEnabled) return;
+      const ctx = getAudioContext();
+      if (!ctx) return;
+
+      triggerAudioDucking(1300, 0.15); // -85% ducking during buzzer + cushion
+
+      try {
+        const now = ctx.currentTime;
+        if (targetPhase === 'FINISHED') {
+          // Victory Fanfare
+          [587.33, 739.99, 880.00, 1174.66].forEach((f, idx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            const startTime = now + (idx * 0.18);
+
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(f, startTime);
+
+            gain.gain.setValueAtTime(0.001, startTime);
+            gain.gain.linearRampToValueAtTime(0.35, startTime + 0.03);
+            gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.85);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc.start(startTime);
+            osc.stop(startTime + 0.9);
+          });
+        } else {
+          // Sharp, piercing industrial gym buzzer (Square + Sawtooth)
+          const freq = (targetPhase === 'WORK') ? 880 : (targetPhase === 'REST' || targetPhase === 'SET_REST') ? 740 : 820;
+
+          // Primary square wave horn
+          const osc1 = ctx.createOscillator();
+          const gain1 = ctx.createGain();
+          osc1.type = 'square';
+          osc1.frequency.setValueAtTime(freq, now);
+
+          gain1.gain.setValueAtTime(0.001, now);
+          gain1.gain.linearRampToValueAtTime(0.35, now + 0.02);
+          gain1.gain.setValueAtTime(0.35, now + 0.9);
+          gain1.gain.linearRampToValueAtTime(0.001, now + 1.0);
+
+          osc1.connect(gain1);
+          gain1.connect(ctx.destination);
+          osc1.start(now);
+          osc1.stop(now + 1.05);
+
+          // Secondary sawtooth wave for aggressive digital grit
+          const osc2 = ctx.createOscillator();
+          const gain2 = ctx.createGain();
+          osc2.type = 'sawtooth';
+          osc2.frequency.setValueAtTime(freq * 0.5, now);
+
+          gain2.gain.setValueAtTime(0.001, now);
+          gain2.gain.linearRampToValueAtTime(0.25, now + 0.02);
+          gain2.gain.setValueAtTime(0.25, now + 0.9);
+          gain2.gain.linearRampToValueAtTime(0.001, now + 1.0);
+
+          osc2.connect(gain2);
+          gain2.connect(ctx.destination);
+          osc2.start(now);
+          osc2.stop(now + 1.05);
+        }
+      } catch (err) {
+        console.warn('Audio playback error:', err);
+      }
+    }
+
+    // DOM Elements - Notes & Modals
+    const workoutNotes = document.getElementById('workoutNotes');
+    const saveStatus = document.getElementById('saveStatus');
+    const clearNotesBtn = document.getElementById('clearNotesBtn');
+    const clearNotesModal = document.getElementById('clearNotesModal');
+    const cancelClearBtn = document.getElementById('cancelClearBtn');
+    const confirmClearBtn = document.getElementById('confirmClearBtn');
+    const loadTemplateBtn = document.getElementById('loadTemplateBtn');
+    const templatesModal = document.getElementById('templatesModal');
+    const closeTemplatesBtn = document.getElementById('closeTemplatesBtn');
+
+    // Font Size Switcher (S: 16px, M: 22px, L: 32px)
+    const fontSizeButtons = document.querySelectorAll('.font-size-btn');
+    const fontClasses = {
+      sm: ['text-[16px]', 'leading-normal'],
+      md: ['text-[22px]', 'leading-relaxed'],
+      lg: ['text-[32px]', 'leading-snug', 'font-medium']
+    };
+    const allFontClasses = ['text-[16px]', 'text-[22px]', 'text-[32px]', 'leading-normal', 'leading-relaxed', 'leading-snug', 'font-medium'];
+
+    function applyFontSize(sizeKey) {
+      if (!fontClasses[sizeKey]) sizeKey = 'md';
+      workoutNotes.classList.remove(...allFontClasses);
+      workoutNotes.classList.add(...fontClasses[sizeKey]);
+
+      fontSizeButtons.forEach(btn => {
+        const isActive = btn.getAttribute('data-size') === sizeKey;
+        if (isActive) {
+          btn.className = 'font-size-btn px-2.5 py-0.5 text-xs font-bold rounded bg-studio-surface text-studio-work shadow-sm transition-colors';
+        } else {
+          btn.className = 'font-size-btn px-2.5 py-0.5 text-xs font-semibold rounded text-neutral-400 hover:text-neutral-100 transition-colors';
+        }
+      });
+
+      try {
+        localStorage.setItem(FONT_STORAGE_KEY, sizeKey);
+      } catch (e) {}
+    }
+
+    fontSizeButtons.forEach(btn => {
+      btn.addEventListener('click', () => applyFontSize(btn.getAttribute('data-size')));
+    });
+
+    // Sound Mute Toggle
+    const soundToggleBtn = document.getElementById('soundToggleBtn');
+    const soundIconOn = document.getElementById('soundIconOn');
+    const soundIconOff = document.getElementById('soundIconOff');
+    const soundStatusText = document.getElementById('soundStatusText');
+
+    const storedSound = localStorage.getItem(SOUND_STORAGE_KEY);
+    if (storedSound !== null) soundEnabled = storedSound === 'true';
+
+    function updateSoundUI() {
+      if (soundEnabled) {
+        soundIconOn.classList.remove('hidden');
+        soundIconOff.classList.add('hidden');
+        soundStatusText.textContent = 'Ton: AN';
+        soundStatusText.classList.remove('text-neutral-500');
+        soundStatusText.classList.add('text-neutral-200');
+      } else {
+        soundIconOn.classList.add('hidden');
+        soundIconOff.classList.remove('hidden');
+        soundStatusText.textContent = 'STUMM';
+        soundStatusText.classList.remove('text-neutral-200');
+        soundStatusText.classList.add('text-neutral-500');
+      }
+    }
+
+    soundToggleBtn.addEventListener('click', () => {
+      getAudioContext();
+      soundEnabled = !soundEnabled;
+      updateSoundUI();
+      try {
+        localStorage.setItem(SOUND_STORAGE_KEY, String(soundEnabled));
+      } catch (e) {}
+      if (soundEnabled) playCountdownBeep();
+    });
+
+    // Live Clock & Fullscreen
+    const studioClock = document.getElementById('studioClock');
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+
+    function updateClock() {
+      const now = new Date();
+      studioClock.textContent = now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    fullscreenBtn.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+    });
+
+    // Notes auto-save with localStorage
+    const savedNotes = localStorage.getItem(NOTES_STORAGE_KEY);
+    if (savedNotes !== null) workoutNotes.value = savedNotes;
+
+    let saveTimeout = null;
+    workoutNotes.addEventListener('input', () => {
+      saveStatus.textContent = 'Speichern...';
+      saveStatus.classList.remove('opacity-75');
+      saveStatus.classList.add('opacity-100');
+
+      clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(() => {
+        try {
+          localStorage.setItem(NOTES_STORAGE_KEY, workoutNotes.value);
+          saveStatus.textContent = 'Gespeichert';
+          saveStatus.classList.remove('opacity-100');
+          saveStatus.classList.add('opacity-75');
+        } catch (e) {
+          saveStatus.textContent = 'Fehler';
+        }
+      }, 350);
+    });
+
+    // Clear notes modal logic
+    clearNotesBtn.addEventListener('click', () => clearNotesModal.classList.remove('hidden'));
+    cancelClearBtn.addEventListener('click', () => clearNotesModal.classList.add('hidden'));
+    confirmClearBtn.addEventListener('click', () => {
+      workoutNotes.value = '';
+      try { localStorage.removeItem(NOTES_STORAGE_KEY); } catch (e) {}
+      saveStatus.textContent = 'Geleert';
+      clearNotesModal.classList.add('hidden');
+    });
+
+    // Workout Templates
+    const templates = {
+      tabata_classic: "TABATA FULL BODY BLAST\n--------------------------------\n1. Burpees mit Jump\n2. Kettlebell / Air Squats\n3. Mountain Climbers (schnell)\n4. Push-ups (Hand Release)\n5. High Knees (Kniehebelauf)\n6. Plank Shoulder Taps\n7. Lunges im Wechsel\n8. Bicycle Crunches",
+      hiit_kettlebell: "KETTLEBELL & CORE SESSION\n--------------------------------\n1. Kettlebell Two-Hand Swings\n2. Goblet Squats\n3. Single Arm Clean & Press (R)\n4. Single Arm Clean & Press (L)\n5. Suitcase Deadlifts\n6. Russian Twists (mit Gewicht)\n7. Kettlebell Floor Press\n8. Hollow Body Rockers",
+      boxing_intervals: "BOXING CONDITIONING & SPEED\n--------------------------------\n1. Shadow Boxing: Jab - Cross - Slip\n2. Fast High Knees / Footwork Ladder\n3. Push-ups & Hook Combinations\n4. Jumping Rope (oder Fake Rope)\n5. Bodyweight Squat + 1-2 Combo\n6. Burpee to Boxing Stance\n7. Sit-ups mit Geraden oben\n8. Isometric Wall Sit"
+    };
+
+    loadTemplateBtn.addEventListener('click', () => templatesModal.classList.remove('hidden'));
+    closeTemplatesBtn.addEventListener('click', () => templatesModal.classList.add('hidden'));
+    document.querySelectorAll('.template-choice-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const type = btn.getAttribute('data-type');
+        if (templates[type]) {
+          workoutNotes.value = templates[type];
+          try { localStorage.setItem(NOTES_STORAGE_KEY, templates[type]); } catch (e) {}
+          saveStatus.textContent = 'Vorlage geladen';
+        }
+        templatesModal.classList.add('hidden');
+      });
+    });
+
+    // Timer Display DOM Elements
+    const timerCard = document.getElementById('timerCard');
+    const timerDigits = document.getElementById('timerDigits');
+    const phaseBadge = document.getElementById('phaseBadge');
+    const phaseGlow = document.getElementById('phaseGlow');
+    const nextPhaseHint = document.getElementById('nextPhaseHint');
+    const nextPhaseName = document.getElementById('nextPhaseName');
+    const cycleDisplay = document.getElementById('cycleDisplay');
+    const setDisplay = document.getElementById('setDisplay');
+    const intervalProgressBar = document.getElementById('intervalProgressBar');
+    const mainToggleBtn = document.getElementById('mainToggleBtn');
+    const toggleIconPlay = document.getElementById('toggleIconPlay');
+    const toggleIconPause = document.getElementById('toggleIconPause');
+    const toggleText = document.getElementById('toggleText');
+    const resetTimerBtn = document.getElementById('resetTimerBtn');
+    const skipPhaseBtn = document.getElementById('skipPhaseBtn');
+    const totalWorkoutTimeBadge = document.getElementById('totalWorkoutTimeBadge');
+
+    function formatTime(seconds) {
+      const s = Math.max(0, Math.floor(seconds));
+      const mins = Math.floor(s / 60);
+      const secs = s % 60;
+      return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+
+    function calculateTotalWorkoutDuration() {
+      const singleSetDuration = (config.cycles * config.workTime) + (Math.max(0, config.cycles - 1) * config.restTime);
+      const allSetsDuration = (config.sets * singleSetDuration) + (Math.max(0, config.sets - 1) * config.setRestTime);
+      const totalSeconds = config.prepareTime + allSetsDuration;
+      totalWorkoutTimeBadge.textContent = formatTime(totalSeconds);
+    }
+
+    // Synchronize, validate and persist an individual config parameter
+    function updateConfigValue(key, rawValue) {
+      let val = parseInt(rawValue, 10);
+      if (isNaN(val)) val = defaultConfigs[key];
+
+      if (key === 'prepareTime') val = Math.max(0, Math.min(300, val));
+      if (key === 'workTime') val = Math.max(5, Math.min(600, val));
+      if (key === 'restTime') val = Math.max(0, Math.min(600, val));
+      if (key === 'cycles') val = Math.max(1, Math.min(99, val));
+      if (key === 'sets') val = Math.max(1, Math.min(50, val));
+      if (key === 'setRestTime') val = Math.max(0, Math.min(1200, val));
+
+      config[key] = val;
+
+      const inputEl = document.getElementById(`input_${key}`);
+      if (inputEl) inputEl.value = val;
+
+      saveConfigToStorage();
+      calculateTotalWorkoutDuration();
+
+      if (state.currentPhase === 'IDLE') {
+        state.timeLeftInPhase = config.prepareTime > 0 ? config.prepareTime : config.workTime;
+        state.phaseDuration = state.timeLeftInPhase;
+        renderTimerDisplay();
+        saveTimerRuntimeState();
+      }
+    }
+
+    // Attach +/- buttons listener
+    document.querySelectorAll('.adjust-btn').forEach(button => {
+      button.addEventListener('click', () => {
+        if (state.isRunning) return;
+        const target = button.getAttribute('data-target');
+        const step = parseInt(button.getAttribute('data-step'), 10);
+        updateConfigValue(target, config[target] + step);
+      });
+    });
+
+    // Attach direct input and change listeners on all 6 timer settings
+    ['prepareTime', 'workTime', 'restTime', 'cycles', 'sets', 'setRestTime'].forEach(key => {
+      const input = document.getElementById(`input_${key}`);
+      if (input) {
+        input.value = config[key];
+
+        input.addEventListener('change', (e) => {
+          if (!state.isRunning) {
+            updateConfigValue(key, e.target.value);
+          } else {
+            e.target.value = config[key]; // revert while timer is actively running
+          }
+        });
+
+        input.addEventListener('input', (e) => {
+          if (!state.isRunning && e.target.value.length > 0) {
+            updateConfigValue(key, e.target.value);
+          }
+        });
+      }
+    });
+
+    const phaseThemes = {
+      IDLE: { name: 'READY', badgeClass: 'bg-neutral-800 text-neutral-300 border-neutral-700', glowClass: 'bg-neutral-600', borderClass: 'border-neutral-800', progressClass: 'bg-neutral-500' },
+      PREPARE: { name: 'PREPARE', badgeClass: 'bg-blue-500/20 text-blue-400 border-blue-500/50 shadow-[0_0_12px_rgba(59,130,246,0.5)]', glowClass: 'bg-blue-600', borderClass: 'border-blue-600/60', progressClass: 'bg-blue-500' },
+      WORK: { name: 'WORK', badgeClass: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50 shadow-[0_0_12px_rgba(16,185,129,0.5)]', glowClass: 'bg-emerald-500', borderClass: 'border-emerald-500/70', progressClass: 'bg-emerald-500' },
+      REST: { name: 'REST', badgeClass: 'bg-amber-500/20 text-amber-400 border-amber-500/50 shadow-[0_0_12px_rgba(245,158,11,0.5)]', glowClass: 'bg-amber-500', borderClass: 'border-amber-500/60', progressClass: 'bg-amber-500' },
+      SET_REST: { name: 'SET REST', badgeClass: 'bg-purple-500/20 text-purple-400 border-purple-500/50 shadow-[0_0_12px_rgba(139,92,246,0.5)]', glowClass: 'bg-purple-600', borderClass: 'border-purple-500/60', progressClass: 'bg-purple-500' },
+      FINISHED: { name: 'FERTIG!', badgeClass: 'bg-emerald-500/30 text-emerald-300 border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.7)]', glowClass: 'bg-emerald-400', borderClass: 'border-emerald-400', progressClass: 'bg-emerald-400' }
+    };
+
+    function renderTimerDisplay() {
+      const currentTheme = phaseThemes[state.currentPhase] || phaseThemes.IDLE;
+
+      phaseBadge.textContent = currentTheme.name;
+      phaseBadge.className = `px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-widest uppercase transition-all duration-300 ${currentTheme.badgeClass}`;
+      phaseGlow.className = `absolute -inset-10 opacity-20 pointer-events-none transition-all duration-700 blur-3xl ${currentTheme.glowClass}`;
+      timerCard.className = `flex-1 bg-studio-surface/40 border-2 rounded-xl p-2.5 flex flex-col justify-between relative overflow-hidden transition-all duration-500 shadow-inner min-h-0 ${currentTheme.borderClass}`;
+
+      timerDigits.textContent = formatTime(state.timeLeftInPhase);
+      if (state.currentPhase === 'WORK') {
+        timerDigits.className = 'font-mono font-black text-6xl sm:text-7xl md:text-8xl lg:text-9xl tracking-tighter tabular-nums text-emerald-400 drop-shadow-[0_0_25px_rgba(16,185,129,0.3)] select-none leading-none transition-colors duration-200';
+      } else if (state.currentPhase === 'REST' || state.currentPhase === 'SET_REST') {
+        timerDigits.className = 'font-mono font-black text-6xl sm:text-7xl md:text-8xl lg:text-9xl tracking-tighter tabular-nums text-amber-400 drop-shadow-[0_0_25px_rgba(245,158,11,0.3)] select-none leading-none transition-colors duration-200';
+      } else if (state.currentPhase === 'PREPARE') {
+        timerDigits.className = 'font-mono font-black text-6xl sm:text-7xl md:text-8xl lg:text-9xl tracking-tighter tabular-nums text-blue-400 drop-shadow-[0_0_25px_rgba(59,130,246,0.3)] select-none leading-none transition-colors duration-200';
+      } else if (state.currentPhase === 'FINISHED') {
+        timerDigits.className = 'font-mono font-black text-5xl sm:text-6xl md:text-7xl tracking-tight text-emerald-300 drop-shadow select-none leading-none';
+        timerDigits.textContent = 'DONE';
+      } else {
+        timerDigits.className = 'font-mono font-black text-6xl sm:text-7xl md:text-8xl lg:text-9xl tracking-tighter tabular-nums text-neutral-100 select-none leading-none';
+      }
+
+      if (state.phaseDuration > 0 && state.currentPhase !== 'FINISHED') {
+        const pct = Math.max(0, Math.min(100, (state.timeLeftInPhase / state.phaseDuration) * 100));
+        intervalProgressBar.style.width = `${pct}%`;
+        intervalProgressBar.className = `h-full rounded-full transition-all duration-200 ${currentTheme.progressClass}`;
+      } else if (state.currentPhase === 'FINISHED') {
+        intervalProgressBar.style.width = '100%';
+        intervalProgressBar.className = 'h-full rounded-full bg-emerald-500';
+      } else {
+        intervalProgressBar.style.width = '100%';
+        intervalProgressBar.className = 'h-full rounded-full bg-neutral-600';
+      }
+
+      cycleDisplay.textContent = `${state.currentCycle} / ${config.cycles}`;
+      setDisplay.textContent = `${state.currentSet} / ${config.sets}`;
+
+      updateNextPhaseHint();
+
+      if (state.isRunning) {
+        mainToggleBtn.className = 'col-span-2 py-2.5 px-4 rounded-xl bg-amber-600 hover:bg-amber-500 active:scale-[0.98] text-white font-bold text-base md:text-lg tracking-wider shadow-lg shadow-amber-950/50 transition-all flex items-center justify-center space-x-2';
+        toggleIconPlay.classList.add('hidden');
+        toggleIconPause.classList.remove('hidden');
+        toggleText.textContent = 'PAUSE';
+      } else {
+        mainToggleBtn.className = 'col-span-2 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-bold text-base md:text-lg tracking-wider shadow-lg shadow-emerald-950/50 transition-all flex items-center justify-center space-x-2';
+        toggleIconPlay.classList.remove('hidden');
+        toggleIconPause.classList.add('hidden');
+        toggleText.textContent = state.currentPhase === 'IDLE' ? 'START' : 'WEITER';
+      }
+    }
+
+    function updateNextPhaseHint() {
+      if (state.currentPhase === 'IDLE') {
+        nextPhaseHint.classList.remove('hidden');
+        nextPhaseName.textContent = config.prepareTime > 0 ? 'Prepare' : 'Work';
+      } else if (state.currentPhase === 'PREPARE') {
+        nextPhaseHint.classList.remove('hidden');
+        nextPhaseName.textContent = 'Work';
+      } else if (state.currentPhase === 'WORK') {
+        if (state.currentCycle < config.cycles) {
+          nextPhaseName.textContent = 'Rest';
+        } else if (state.currentSet < config.sets) {
+          nextPhaseName.textContent = config.setRestTime > 0 ? 'Set Rest' : 'Work (Set ' + (state.currentSet + 1) + ')';
+        } else {
+          nextPhaseName.textContent = 'Finished!';
+        }
+      } else if (state.currentPhase === 'REST') {
+        nextPhaseName.textContent = 'Work (Cycle ' + (state.currentCycle + 1) + ')';
+      } else if (state.currentPhase === 'SET_REST') {
+        nextPhaseName.textContent = 'Work (Set ' + (state.currentSet + 1) + ')';
+      } else if (state.currentPhase === 'FINISHED') {
+        nextPhaseHint.classList.add('hidden');
+      }
+    }
+
+    function advancePhase() {
+      let nextPhaseType = 'WORK';
+
+      if (state.currentPhase === 'IDLE' || state.currentPhase === 'PREPARE') {
+        state.currentPhase = 'WORK';
+        state.timeLeftInPhase = config.workTime;
+        state.phaseDuration = config.workTime;
+        nextPhaseType = 'WORK';
+      } else if (state.currentPhase === 'WORK') {
+        if (state.currentCycle < config.cycles) {
+          if (config.restTime > 0) {
+            state.currentPhase = 'REST';
+            state.timeLeftInPhase = config.restTime;
+            state.phaseDuration = config.restTime;
+            nextPhaseType = 'REST';
+          } else {
+            state.currentCycle++;
+            state.currentPhase = 'WORK';
+            state.timeLeftInPhase = config.workTime;
+            state.phaseDuration = config.workTime;
+            nextPhaseType = 'WORK';
+          }
+        } else {
+          if (state.currentSet < config.sets) {
+            if (config.setRestTime > 0) {
+              state.currentPhase = 'SET_REST';
+              state.timeLeftInPhase = config.setRestTime;
+              state.phaseDuration = config.setRestTime;
+              nextPhaseType = 'SET_REST';
+            } else {
+              state.currentSet++;
+              state.currentCycle = 1;
+              state.currentPhase = 'WORK';
+              state.timeLeftInPhase = config.workTime;
+              state.phaseDuration = config.workTime;
+              nextPhaseType = 'WORK';
+            }
+          } else {
+            finishWorkout();
+            return;
+          }
+        }
+      } else if (state.currentPhase === 'REST') {
+        state.currentCycle++;
+        state.currentPhase = 'WORK';
+        state.timeLeftInPhase = config.workTime;
+        state.phaseDuration = config.workTime;
+        nextPhaseType = 'WORK';
+      } else if (state.currentPhase === 'SET_REST') {
+        state.currentSet++;
+        state.currentCycle = 1;
+        state.currentPhase = 'WORK';
+        state.timeLeftInPhase = config.workTime;
+        state.phaseDuration = config.workTime;
+        nextPhaseType = 'WORK';
+      }
+
+      // LOUD 1-SECOND BUZZER AT PHASE TRANSITION
+      playPhaseTransitionGong(nextPhaseType);
+      renderTimerDisplay();
+      saveTimerRuntimeState();
+    }
+
+    function finishWorkout() {
+      clearInterval(state.timerInterval);
+      state.isRunning = false;
+      state.currentPhase = 'FINISHED';
+      state.timeLeftInPhase = 0;
+
+      releaseWakeLock();
+
+      if (syncAudioToggle.checked) {
+        pauseActiveAudio();
+      }
+
+      playPhaseTransitionGong('FINISHED');
+      renderTimerDisplay();
+      saveTimerRuntimeState();
+    }
+
+    function tick() {
+      if (!state.isRunning) return;
+
+      if (state.timeLeftInPhase > 1) {
+        state.timeLeftInPhase--;
+        // Short countdown beeps at 3, 2, 1
+        if (state.timeLeftInPhase <= 3 && state.timeLeftInPhase >= 1) {
+          playCountdownBeep();
+        }
+        renderTimerDisplay();
+        saveTimerRuntimeState();
+      } else {
+        advancePhase();
+      }
+    }
+
+    mainToggleBtn.addEventListener('click', () => {
+      getAudioContext();
+
+      if (state.currentPhase === 'FINISHED') {
+        resetTimer();
+        return;
+      }
+
+      if (state.isRunning) {
+        clearInterval(state.timerInterval);
+        state.isRunning = false;
+        releaseWakeLock();
+        if (syncAudioToggle.checked) {
+          pauseActiveAudio();
+        }
+        renderTimerDisplay();
+        saveTimerRuntimeState();
+      } else {
+        if (state.currentPhase === 'IDLE') {
+          if (config.prepareTime > 0) {
+            state.currentPhase = 'PREPARE';
+            state.timeLeftInPhase = config.prepareTime;
+            state.phaseDuration = config.prepareTime;
+            playPhaseTransitionGong('PREPARE');
+          } else {
+            state.currentPhase = 'WORK';
+            state.timeLeftInPhase = config.workTime;
+            state.phaseDuration = config.workTime;
+            playPhaseTransitionGong('WORK');
+          }
+        }
+
+        state.isRunning = true;
+        state.timerInterval = setInterval(tick, 1000);
+        requestWakeLock();
+
+        if (syncAudioToggle.checked) {
+          playActiveAudio();
+        }
+
+        renderTimerDisplay();
+        saveTimerRuntimeState();
+      }
+    });
+
+    skipPhaseBtn.addEventListener('click', () => {
+      if (state.currentPhase === 'FINISHED') return;
+      getAudioContext();
+      advancePhase();
+    });
+
+    function resetTimer() {
+      clearInterval(state.timerInterval);
+      state.isRunning = false;
+      state.currentPhase = 'IDLE';
+      state.currentCycle = 1;
+      state.currentSet = 1;
+      state.timeLeftInPhase = config.prepareTime > 0 ? config.prepareTime : config.workTime;
+      state.phaseDuration = state.timeLeftInPhase;
+
+      releaseWakeLock();
+
+      if (syncAudioToggle.checked) {
+        pauseActiveAudio();
+      }
+
+      renderTimerDisplay();
+      saveTimerRuntimeState();
+    }
+    resetTimerBtn.addEventListener('click', resetTimer);
+
+    // INDEXEDDB ENGINE: Permanent Client-side Storage for Audio Files (No Blob loss on F5)
+    const DB_NAME = 'StudioWorkoutAudioDB';
+    const DB_VERSION = 1;
+    const STORE_NAME = 'audio_tracks';
+
+    function openAudioDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, DB_VERSION);
+        req.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains(STORE_NAME)) {
+            db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+          }
+        };
+        req.onsuccess = (e) => resolve(e.target.result);
+        req.onerror = (e) => reject(e.target.error);
+      });
+    }
+
+    async function saveAudioTracksToDB(files) {
+      const db = await openAudioDB();
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      for (const file of files) {
+        store.add({
+          name: file.name.replace(/\.[^/.]+$/, ""),
+          blob: file,
+          type: file.type || 'audio/mpeg',
+          size: file.size,
+          createdAt: Date.now()
+        });
+      }
+      return new Promise((resolve, reject) => {
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+
+    async function loadAudioTracksFromDB() {
+      try {
+        const db = await openAudioDB();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE_NAME, 'readonly');
+          const store = tx.objectStore(STORE_NAME);
+          const req = store.getAll();
+          req.onsuccess = () => resolve(req.result || []);
+          req.onerror = () => reject(req.error);
+        });
+      } catch (e) {
+        console.warn('IndexedDB read error:', e);
+        return [];
+      }
+    }
+
+    async function deleteAudioTrackFromDB(id) {
+      try {
+        const db = await openAudioDB();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE_NAME, 'readwrite');
+          const store = tx.objectStore(STORE_NAME);
+          const req = store.delete(id);
+          req.onsuccess = () => resolve();
+          req.onerror = () => reject(req.error);
+        });
+      } catch (e) {
+        console.warn('IndexedDB delete error:', e);
+      }
+    }
+
+    async function clearAllAudioTracksFromDB() {
+      try {
+        const db = await openAudioDB();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE_NAME, 'readwrite');
+          const store = tx.objectStore(STORE_NAME);
+          const req = store.clear();
+          req.onsuccess = () => resolve();
+          req.onerror = () => reject(req.error);
+        });
+      } catch (e) {
+        console.warn('IndexedDB clear error:', e);
+      }
+    }
+
+    const syncAudioToggle = document.getElementById('syncAudioToggle');
+    const masterPlayPauseBtn = document.getElementById('masterPlayPauseBtn');
+    const audioPrevBtn = document.getElementById('audioPrevBtn');
+    const audioNextBtn = document.getElementById('audioNextBtn');
+    const musicPlayIcon = document.getElementById('musicPlayIcon');
+    const musicPauseIcon = document.getElementById('musicPauseIcon');
+    const audioProgressBar = document.getElementById('audioProgressBar');
+    const audioCurrentTime = document.getElementById('audioCurrentTime');
+    const audioDuration = document.getElementById('audioDuration');
+    const audioVolumeSlider = document.getElementById('audioVolumeSlider');
+    const playingDisc = document.getElementById('playingDisc');
+
+    const selectAudioFileBtn = document.getElementById('selectAudioFileBtn');
+    const selectAudioFileBtnText = document.getElementById('selectAudioFileBtnText');
+    const audioFileInput = document.getElementById('audioFileInput');
+    const audioTrackTitle = document.getElementById('audioTrackTitle');
+    const playlistWrapper = document.getElementById('playlistWrapper');
+    const playlistItems = document.getElementById('playlistItems');
+    const playlistCountBadge = document.getElementById('playlistCountBadge');
+    const clearPlaylistBtn = document.getElementById('clearPlaylistBtn');
+    const clearPlaylistModal = document.getElementById('clearPlaylistModal');
+    const cancelClearPlaylistBtn = document.getElementById('cancelClearPlaylistBtn');
+    const confirmClearPlaylistBtn = document.getElementById('confirmClearPlaylistBtn');
+
+    let playlist = []; // Array of { id, name, blob, url }
+    let currentTrackIndex = 0;
+
+    // Load Auto-Sync preference
+    const storedSync = localStorage.getItem(SYNC_STORAGE_KEY);
+    if (storedSync !== null) {
+      syncAudioToggle.checked = storedSync === 'true';
+    }
+    syncAudioToggle.addEventListener('change', () => {
+      try { localStorage.setItem(SYNC_STORAGE_KEY, String(syncAudioToggle.checked)); } catch (e) {}
+    });
+
+    // File Selector trigger
+    selectAudioFileBtn.addEventListener('click', () => audioFileInput.click());
+
+    // File Upload Handler (Stores files permanently in IndexedDB)
+    audioFileInput.addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files);
+      if (!files.length) return;
+
+      selectAudioFileBtnText.textContent = 'Speichern...';
+      try {
+        await saveAudioTracksToDB(files);
+        await reloadPlaylistFromIndexedDB(true);
+      } catch (err) {
+        console.error('Error saving audio tracks to IndexedDB:', err);
+      } finally {
+        selectAudioFileBtnText.textContent = 'Dateien hinzufügen';
+        audioFileInput.value = '';
+      }
+    });
+
+    // Clear Playlist confirmation
+    clearPlaylistBtn.addEventListener('click', () => clearPlaylistModal.classList.remove('hidden'));
+    cancelClearPlaylistBtn.addEventListener('click', () => clearPlaylistModal.classList.add('hidden'));
+    confirmClearPlaylistBtn.addEventListener('click', async () => {
+      await clearAllAudioTracksFromDB();
+      playlist.forEach(t => { if (t.url) URL.revokeObjectURL(t.url); });
+      playlist = [];
+      workoutAudio.pause();
+      workoutAudio.src = '';
+      currentTrackIndex = 0;
+      audioTrackTitle.textContent = 'Keine Musik geladen (MP3 / WAV)';
+      audioTrackTitle.title = 'Keine Musik geladen';
+      clearPlaylistModal.classList.add('hidden');
+      renderPlaylistUI();
+      updateControls();
+    });
+
+    // Load or reload tracks from IndexedDB into memory with Object URLs
+    async function reloadPlaylistFromIndexedDB(autoplayNew = false) {
+      const records = await loadAudioTracksFromDB();
+
+      // Revoke old URLs to prevent memory leak
+      playlist.forEach(t => { if (t.url) URL.revokeObjectURL(t.url); });
+
+      playlist = records.map(rec => ({
+        id: rec.id,
+        name: rec.name,
+        blob: rec.blob,
+        url: URL.createObjectURL(rec.blob)
+      }));
+
+      if (playlist.length > 0) {
+        if (currentTrackIndex >= playlist.length) currentTrackIndex = 0;
+        loadTrack(currentTrackIndex, autoplayNew && state.isRunning && syncAudioToggle.checked);
+      } else {
+        workoutAudio.pause();
+        workoutAudio.src = '';
+        audioTrackTitle.textContent = 'Keine Musik geladen (MP3 / WAV)';
+        updateControls();
+      }
+      renderPlaylistUI();
+    }
+
+    function loadTrack(index, shouldPlay = false) {
+      if (!playlist.length || index < 0 || index >= playlist.length) return;
+
+      currentTrackIndex = index;
+      const track = playlist[index];
+
+      workoutAudio.src = track.url;
+      audioTrackTitle.textContent = `${index + 1}. ${track.name}`;
+      audioTrackTitle.title = track.name;
+      audioProgressBar.value = 0;
+      audioCurrentTime.textContent = '00:00';
+      updateControls();
+
+      if (shouldPlay) {
+        workoutAudio.play().catch(e => console.log('Autoplay deferred:', e));
+      }
+
+      renderPlaylistUI();
+    }
+
+    function renderPlaylistUI() {
+      if (!playlist.length) {
+        playlistWrapper.classList.add('hidden');
+        playlistCountBadge.classList.add('hidden');
+        clearPlaylistBtn.classList.add('hidden');
+        return;
+      }
+
+      playlistWrapper.classList.remove('hidden');
+      playlistCountBadge.classList.remove('hidden');
+      clearPlaylistBtn.classList.remove('hidden');
+      playlistCountBadge.textContent = `${playlist.length} Tracks`;
+
+      playlistItems.innerHTML = '';
+      playlist.forEach((track, idx) => {
+        const isCurrent = idx === currentTrackIndex;
+        const row = document.createElement('div');
+        row.className = `flex items-center justify-between p-1.5 rounded-lg cursor-pointer transition text-[11px] select-none group ${
+          isCurrent
+            ? 'bg-emerald-950/70 border border-emerald-600/70 text-emerald-300 font-semibold shadow-sm'
+            : 'bg-studio-surface/80 border border-studio-cardBorder hover:bg-neutral-800 text-neutral-300'
+        }`;
+
+        row.innerHTML = `
+          <div class="flex items-center space-x-2 truncate flex-1 mr-2">
+            <span class="font-mono text-[9px] w-3 text-neutral-400">${idx + 1}</span>
+            <span class="truncate">${track.name}</span>
+          </div>
+          <div class="flex items-center space-x-1.5 flex-shrink-0">
+            ${isCurrent ? `
+              <span class="flex items-center space-x-1 text-[9px] text-emerald-400 font-mono">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                <span>PLAYING</span>
+              </span>
+            ` : ''}
+            <button class="delete-track-btn opacity-60 hover:opacity-100 hover:text-red-400 p-0.5 rounded text-neutral-400" title="Diesen Track entfernen">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+        `;
+
+        row.querySelector('.delete-track-btn').addEventListener('click', async (ev) => {
+          ev.stopPropagation();
+          await deleteAudioTrackFromDB(track.id);
+          if (idx === currentTrackIndex) {
+            workoutAudio.pause();
+          }
+          await reloadPlaylistFromIndexedDB(false);
+        });
+
+        row.addEventListener('click', () => {
+          loadTrack(idx, true);
+        });
+        playlistItems.appendChild(row);
+      });
+    }
+
+    function playNextTrack(autoPlay = true) {
+      if (!playlist.length) return;
+      const nextIdx = (currentTrackIndex + 1) % playlist.length;
+      loadTrack(nextIdx, autoPlay);
+    }
+
+    function playPrevTrack() {
+      if (!playlist.length) return;
+      if (workoutAudio.currentTime > 3) {
+        workoutAudio.currentTime = 0;
+      } else {
+        const prevIdx = (currentTrackIndex - 1 + playlist.length) % playlist.length;
+        loadTrack(prevIdx, !workoutAudio.paused);
+      }
+    }
+
+    // Auto-Next: Advance playlist seamlessly upon track finish
+    workoutAudio.addEventListener('ended', () => {
+      if (playlist.length > 1) {
+        playNextTrack(true);
+      } else {
+        workoutAudio.currentTime = 0;
+        updateControls();
+        audioProgressBar.value = 0;
+      }
+    });
+
+    workoutAudio.addEventListener('loadedmetadata', () => {
+      audioDuration.textContent = formatTime(workoutAudio.duration || 0);
+    });
+
+    workoutAudio.addEventListener('timeupdate', () => {
+      if (!isNaN(workoutAudio.duration) && workoutAudio.duration > 0) {
+        const pct = (workoutAudio.currentTime / workoutAudio.duration) * 100;
+        audioProgressBar.value = pct;
+        audioCurrentTime.textContent = formatTime(workoutAudio.currentTime);
+      }
+    });
+
+    audioProgressBar.addEventListener('input', () => {
+      if (!isNaN(workoutAudio.duration) && workoutAudio.duration > 0) {
+        const newTime = (audioProgressBar.value / 100) * workoutAudio.duration;
+        workoutAudio.currentTime = newTime;
+      }
+    });
+
+    workoutAudio.addEventListener('play', () => {
+      updateControls();
+      if (playingDisc) playingDisc.classList.add('animate-spin');
+    });
+
+    workoutAudio.addEventListener('pause', () => {
+      updateControls();
+      if (playingDisc) playingDisc.classList.remove('animate-spin');
+    });
+
+    function playActiveAudio() {
+      if (workoutAudio && workoutAudio.src) {
+        workoutAudio.play().catch(e => console.log('Audio play requires user interaction', e));
+      }
+      updateControls();
+    }
+
+    function pauseActiveAudio() {
+      if (workoutAudio) workoutAudio.pause();
+      updateControls();
+    }
+
+    function updateControls() {
+      const isPlaying = workoutAudio && !workoutAudio.paused;
+
+      if (isPlaying) {
+        musicPlayIcon.classList.add('hidden');
+        musicPauseIcon.classList.remove('hidden');
+      } else {
+        musicPlayIcon.classList.remove('hidden');
+        musicPauseIcon.classList.add('hidden');
+      }
+
+      masterPlayPauseBtn.disabled = !playlist.length;
+      audioPrevBtn.disabled = playlist.length <= 1;
+      audioNextBtn.disabled = playlist.length <= 1;
+      audioProgressBar.disabled = !playlist.length;
+    }
+
+    masterPlayPauseBtn.addEventListener('click', () => {
+      getAudioContext();
+      if (workoutAudio && !workoutAudio.paused) {
+        pauseActiveAudio();
+      } else {
+        playActiveAudio();
+      }
+    });
+
+    audioNextBtn.addEventListener('click', () => {
+      getAudioContext();
+      playNextTrack(!workoutAudio.paused);
+    });
+
+    audioPrevBtn.addEventListener('click', () => {
+      getAudioContext();
+      playPrevTrack();
+    });
+
+    audioVolumeSlider.addEventListener('input', (e) => {
+      baseVolume = parseFloat(e.target.value);
+      applyCurrentVolume(baseVolume);
+    });
+
+    // Synchronous & Guaranteed Restoration on F5 Refresh
+    async function initPersistentState() {
+      // 1. Reload & set font size
+      const savedFontSize = localStorage.getItem(FONT_STORAGE_KEY) || 'md';
+      applyFontSize(savedFontSize);
+
+      // 2. Reload stored config values into UI fields
+      loadConfigFromStorage();
+      ['prepareTime', 'workTime', 'restTime', 'cycles', 'sets', 'setRestTime'].forEach(key => {
+        const input = document.getElementById(`input_${key}`);
+        if (input) input.value = config[key];
+      });
+
+      // 3. Restore Runtime Timer State if previously active
+      const savedRuntimeState = loadTimerRuntimeState();
+      if (savedRuntimeState && savedRuntimeState.currentPhase && savedRuntimeState.currentPhase !== 'IDLE' && savedRuntimeState.currentPhase !== 'FINISHED') {
+        state.currentPhase = savedRuntimeState.currentPhase;
+        state.currentCycle = savedRuntimeState.currentCycle || 1;
+        state.currentSet = savedRuntimeState.currentSet || 1;
+        state.timeLeftInPhase = typeof savedRuntimeState.timeLeftInPhase === 'number' ? savedRuntimeState.timeLeftInPhase : config.workTime;
+        state.phaseDuration = typeof savedRuntimeState.phaseDuration === 'number' ? savedRuntimeState.phaseDuration : state.timeLeftInPhase;
+        state.isRunning = false;
+      } else {
+        state.currentPhase = 'IDLE';
+        state.currentCycle = 1;
+        state.currentSet = 1;
+        state.timeLeftInPhase = config.prepareTime > 0 ? config.prepareTime : config.workTime;
+        state.phaseDuration = state.timeLeftInPhase;
+        state.isRunning = false;
+      }
+
+      // 4. Update UI displays immediately
+      updateSoundUI();
+      calculateTotalWorkoutDuration();
+      applyCurrentVolume(baseVolume);
+      renderTimerDisplay();
+
+      // 5. Restore permanent audio playlist from IndexedDB (ready for zero-click instant playback)
+      await reloadPlaylistFromIndexedDB(false);
+    }
+
+    // Execute immediately and attach to lifecycle events for full reliability
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initPersistentState);
+    } else {
+      initPersistentState();
+    }
+  </script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js');
+    });
+  }
+</script>
+
+</body>
+</html>
